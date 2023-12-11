@@ -1,4 +1,5 @@
 var express = require('express');
+var passport = require('../auth/passport');
 var db = require('../db');
 
 function fetchTodos(req, res, next) {
@@ -22,6 +23,13 @@ function fetchTodos(req, res, next) {
   });
 }
 
+function ensureSignedIn(req, res, next) {
+  if (req.isAuthenticated()) {
+     return next();
+  }
+  res.redirect('/login')
+}
+
 var router = express.Router();
 
 /* GET home page. */
@@ -33,19 +41,19 @@ router.get('/', function(req, res, next) {
   res.render('index', { user: req.user });
 });
 
-router.get('/active', fetchTodos, function(req, res, next) {
+router.get('/active', ensureSignedIn, fetchTodos, function(req, res, next) {
   res.locals.todos = res.locals.todos.filter(function(todo) { return !todo.completed; });
   res.locals.filter = 'active';
   res.render('index', { user: req.user });
 });
 
-router.get('/completed', fetchTodos, function(req, res, next) {
+router.get('/completed', ensureSignedIn, fetchTodos, function(req, res, next) {
   res.locals.todos = res.locals.todos.filter(function(todo) { return todo.completed; });
   res.locals.filter = 'completed';
   res.render('index', { user: req.user });
 });
 
-router.post('/', function(req, res, next) {
+router.post('/', ensureSignedIn, function(req, res, next) {
   req.body.title = req.body.title.trim();
   next();
 }, function(req, res, next) {
@@ -62,7 +70,7 @@ router.post('/', function(req, res, next) {
   });
 });
 
-router.post('/:id(\\d+)', function(req, res, next) {
+router.post('/:id(\\d+)', ensureSignedIn, function(req, res, next) {
   req.body.title = req.body.title.trim();
   next();
 }, function(req, res, next) {
@@ -86,7 +94,7 @@ router.post('/:id(\\d+)', function(req, res, next) {
   });
 });
 
-router.post('/:id(\\d+)/delete', function(req, res, next) {
+router.post('/:id(\\d+)/delete', ensureSignedIn, function(req, res, next) {
   db.run('DELETE FROM todos WHERE id = ? AND owner_id = ?', [
     req.params.id,
     req.user.id
@@ -96,7 +104,7 @@ router.post('/:id(\\d+)/delete', function(req, res, next) {
   });
 });
 
-router.post('/toggle-all', function(req, res, next) {
+router.post('/toggle-all', ensureSignedIn, function(req, res, next) {
   db.run('UPDATE todos SET completed = ? WHERE owner_id = ?', [
     req.body.completed !== undefined ? 1 : null,
     req.user.id
@@ -106,7 +114,7 @@ router.post('/toggle-all', function(req, res, next) {
   });
 });
 
-router.post('/clear-completed', function(req, res, next) {
+router.post('/clear-completed', ensureSignedIn, function(req, res, next) {
   db.run('DELETE FROM todos WHERE owner_id = ? AND completed = ?', [
     req.user.id,
     1

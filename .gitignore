@@ -1,4 +1,5 @@
 .env
+.okta.env
 var
 
 # Node.js
